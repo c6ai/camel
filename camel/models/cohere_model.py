@@ -16,10 +16,8 @@ import os
 import uuid
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from cohere.core.api_error import ApiError
-
 if TYPE_CHECKING:
-    from cohere.chat import ChatResponse
+    from cohere.types import NonStreamedChatResponse
 
 from camel.messages import OpenAIMessage
 from camel.models import BaseModelBackend
@@ -52,22 +50,20 @@ class CohereModel(BaseModelBackend):
         token_counter: Optional[BaseTokenCounter] = None,
         model_platform: Optional[ModelPlatformType] = None,
     ):
+        import cohere
+
         super().__init__(
             model_type, model_config_dict, api_key, token_counter=token_counter
         )
         self._api_key = api_key or os.environ.get("COHERE_API_KEY")
         self.model_platform = model_platform
 
-        print(
-            f"API Key loaded: {'*' * (len(self._api_key) - 4) + self._api_key[-4:] if self._api_key else 'None'}"
-        )
-
-        import cohere
-
         self._client = cohere.Client(api_key=self._api_key)
         self._token_counter: Optional[BaseTokenCounter] = None
 
-    def _to_openai_response(self, response: 'ChatResponse') -> ChatCompletion:
+    def _to_openai_response(
+        self, response: 'NonStreamedChatResponse'
+    ) -> ChatCompletion:
         unique_id = str(uuid.uuid4())
 
         # Safely access nested attributes
@@ -143,7 +139,7 @@ class CohereModel(BaseModelBackend):
             else:
                 raise ValueError(f"Unsupported message role: {role}")
 
-        return new_messages
+        return new_messages  # type: ignore[return-value]
 
     @property
     def token_counter(self) -> BaseTokenCounter:
@@ -170,6 +166,8 @@ class CohereModel(BaseModelBackend):
         Returns:
             ChatCompletion.
         """
+        from cohere.core.api_error import ApiError
+
         cohere_messages = self._to_cohere_chatmessage(messages)
 
         # Filter out unsupported parameters
@@ -189,7 +187,7 @@ class CohereModel(BaseModelBackend):
         try:
             response = self._client.chat(
                 message=cohere_messages[-1]["message"],
-                chat_history=cohere_messages[:-1],
+                chat_history=cohere_messages[:-1],  # type: ignore[arg-type]
                 model=self.model_type.value,
                 **filtered_config,
             )
@@ -208,11 +206,11 @@ class CohereModel(BaseModelBackend):
             llm_event = LLMEvent(
                 thread_id=openai_response.id,
                 prompt=" ".join(
-                    [message.get("content") for message in messages]
+                    [message.get("content") for message in messages]  # type: ignore[misc]
                 ),
-                prompt_tokens=openai_response.usage.prompt_tokens,
+                prompt_tokens=openai_response.usage.prompt_tokens,  # type: ignore[union-attr]
                 completion=openai_response.choices[0].message.content,
-                completion_tokens=openai_response.usage.completion_tokens,
+                completion_tokens=openai_response.usage.completion_tokens,  # type: ignore[union-attr]
                 model=self.model_type.value,
             )
             record(llm_event)
