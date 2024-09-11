@@ -11,19 +11,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =========== Copyright 2023 @ CAMEL-AI.org. All Rights Reserved. ===========
-import os
 import logging
+import os
 import uuid
-from cohere.core.api_error import ApiError
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+from cohere.core.api_error import ApiError
 
 if TYPE_CHECKING:
     from cohere.chat import ChatResponse
 
-from camel.configs import COHERE_API_PARAMS
 from camel.messages import OpenAIMessage
 from camel.models import BaseModelBackend
-from camel.types import ChatCompletion, ModelType, ModelPlatformType
+from camel.types import ChatCompletion, ModelPlatformType, ModelType
 from camel.utils import (
     BaseTokenCounter,
     OpenAITokenCounter,
@@ -40,6 +40,7 @@ try:
 except (ImportError, AttributeError):
     LLMEvent = None
 
+
 class CohereModel(BaseModelBackend):
     """Cohere API in a unified BaseModelBackend interface."""
 
@@ -51,19 +52,24 @@ class CohereModel(BaseModelBackend):
         token_counter: Optional[BaseTokenCounter] = None,
         model_platform: Optional[ModelPlatformType] = None,
     ):
-        super().__init__(model_type, model_config_dict, api_key, token_counter=token_counter)
+        super().__init__(
+            model_type, model_config_dict, api_key, token_counter=token_counter
+        )
         self._api_key = api_key or os.environ.get("COHERE_API_KEY")
         self.model_platform = model_platform
 
-        print(f"API Key loaded: {'*' * (len(self._api_key) - 4) + self._api_key[-4:] if self._api_key else 'None'}")
+        print(
+            f"API Key loaded: {'*' * (len(self._api_key) - 4) + self._api_key[-4:] if self._api_key else 'None'}"
+        )
 
         import cohere
+
         self._client = cohere.Client(api_key=self._api_key)
         self._token_counter: Optional[BaseTokenCounter] = None
 
     def _to_openai_response(self, response: 'ChatResponse') -> ChatCompletion:
         unique_id = str(uuid.uuid4())
-        
+
         # Safely access nested attributes
         def safe_get(obj, *keys):
             for key in keys:
@@ -91,18 +97,38 @@ class CohereModel(BaseModelBackend):
             model=self.model_type.value,
             object="chat.completion",
             usage={
-                "prompt_tokens": safe_get(response, 'meta', 'billed_tokens', 'prompt_tokens') or 0,
-                "completion_tokens": safe_get(response, 'meta', 'billed_tokens', 'completion_tokens') or 0,
+                "prompt_tokens": safe_get(
+                    response, 'meta', 'billed_tokens', 'prompt_tokens'
+                )
+                or 0,
+                "completion_tokens": safe_get(
+                    response, 'meta', 'billed_tokens', 'completion_tokens'
+                )
+                or 0,
                 "total_tokens": (
-                    (safe_get(response, 'meta', 'billed_tokens', 'prompt_tokens') or 0) +
-                    (safe_get(response, 'meta', 'billed_tokens', 'completion_tokens') or 0)
+                    (
+                        safe_get(
+                            response, 'meta', 'billed_tokens', 'prompt_tokens'
+                        )
+                        or 0
+                    )
+                    + (
+                        safe_get(
+                            response,
+                            'meta',
+                            'billed_tokens',
+                            'completion_tokens',
+                        )
+                        or 0
+                    )
                 ),
             },
         )
         return obj
 
-
-    def _to_cohere_chatmessage(self, messages: List[OpenAIMessage]) -> List[Dict[str, str]]:
+    def _to_cohere_chatmessage(
+        self, messages: List[OpenAIMessage]
+    ) -> List[Dict[str, str]]:
         new_messages = []
         for msg in messages:
             role = msg.get("role")
@@ -148,10 +174,15 @@ class CohereModel(BaseModelBackend):
 
         # Filter out unsupported parameters
         supported_params = {
-            'temperature', 'p', 'k', 'max_tokens', 'prompt_truncation'
+            'temperature',
+            'p',
+            'k',
+            'max_tokens',
+            'prompt_truncation',
         }
         filtered_config = {
-            k: v for k, v in self.model_config_dict.items()
+            k: v
+            for k, v in self.model_config_dict.items()
             if k in supported_params
         }
 
@@ -167,7 +198,7 @@ class CohereModel(BaseModelBackend):
             logging.error(f"Error body: {e.body}")
             raise
         except Exception as e:
-            logging.error(f"Unexpected error when calling Cohere API: {str(e)}")
+            logging.error(f"Unexpected error when calling Cohere API: {e!s}")
             raise
 
         openai_response = self._to_openai_response(response)
@@ -197,7 +228,11 @@ class CohereModel(BaseModelBackend):
                 unexpected arguments to Cohere API.
         """
         supported_params = {
-            'temperature', 'p', 'k', 'max_tokens', 'prompt_truncation'
+            'temperature',
+            'p',
+            'k',
+            'max_tokens',
+            'prompt_truncation',
         }
         for param in self.model_config_dict:
             if param not in supported_params:

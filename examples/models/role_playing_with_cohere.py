@@ -12,10 +12,10 @@
 # limitations under the License.
 # =========== Copyright 2023 @ CAMEL-AI.org. All Rights Reserved. ===========
 import os
-from colorama import Fore
 
 import cohere
 from cohere.core.api_error import ApiError
+from colorama import Fore
 
 from camel.configs import CohereConfig
 from camel.models import ModelFactory
@@ -23,9 +23,10 @@ from camel.societies import RolePlaying
 from camel.types import ModelPlatformType, ModelType
 from camel.utils import print_text_animated
 
+
 def test_cohere_api(api_key):
     client = cohere.Client(api_key)
-    
+
     print("Testing Cohere generate endpoint:")
     try:
         response = client.generate(prompt="Hello, world!")
@@ -35,8 +36,8 @@ def test_cohere_api(api_key):
         print(f"Generate test failed. Status code: {e.status_code}")
         print(f"Error body: {e.body}")
     except Exception as e:
-        print(f"Generate test failed. Error: {str(e)}")
-    
+        print(f"Generate test failed. Error: {e!s}")
+
     print("\nTesting Cohere chat endpoint:")
     try:
         response = client.chat(message="Hello", model="command")
@@ -46,7 +47,8 @@ def test_cohere_api(api_key):
         print(f"Chat test failed. Status code: {e.status_code}")
         print(f"Error body: {e.body}")
     except Exception as e:
-        print(f"Chat test failed. Error: {str(e)}")
+        print(f"Chat test failed. Error: {e!s}")
+
 
 def main(
     model_platform=ModelPlatformType.COHERE,
@@ -139,6 +141,7 @@ def main(
             break
 
         input_msg = assistant_response.msg
+
 
 if __name__ == "__main__":
     main()

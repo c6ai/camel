@@ -49,7 +49,9 @@ class CohereConfig(BaseConfig):
     @classmethod
     def validate_prompt_truncation(cls, v):
         if v is not None and v not in ['START', 'END', 'AUTO']:
-            raise ValueError("prompt_truncation must be 'START', 'END', or 'AUTO'")
+            raise ValueError(
+                "prompt_truncation must be 'START', 'END', or 'AUTO'"
+            )
         return v
 
     def as_dict(self):
