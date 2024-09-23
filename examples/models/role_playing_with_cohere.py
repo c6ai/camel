@@ -75,6 +75,7 @@ def main(
         model_platform=model_platform,
         model_type=model_type,
         model_config_dict=model_config.as_dict(),
+        api_key=api_key,
     )
 
     # Set up role playing session

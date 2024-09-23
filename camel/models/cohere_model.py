@@ -19,9 +19,10 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 if TYPE_CHECKING:
     from cohere.types import NonStreamedChatResponse
 
+from camel.configs import COHERE_API_PARAMS
 from camel.messages import OpenAIMessage
 from camel.models import BaseModelBackend
-from camel.types import ChatCompletion, ModelPlatformType, ModelType
+from camel.types import ChatCompletion, ModelType
 from camel.utils import (
     BaseTokenCounter,
     OpenAITokenCounter,
@@ -40,15 +41,15 @@ except (ImportError, AttributeError):
 
 
 class CohereModel(BaseModelBackend):
-    """Cohere API in a unified BaseModelBackend interface."""
+    r"""Cohere API in a unified BaseModelBackend interface."""
 
     def __init__(
         self,
         model_type: ModelType,
         model_config_dict: Dict[str, Any],
         api_key: Optional[str] = None,
+        url: Optional[str] = None,
         token_counter: Optional[BaseTokenCounter] = None,
-        model_platform: Optional[ModelPlatformType] = None,
     ):
         import cohere
 
@@ -56,7 +57,7 @@ class CohereModel(BaseModelBackend):
             model_type, model_config_dict, api_key, token_counter=token_counter
         )
         self._api_key = api_key or os.environ.get("COHERE_API_KEY")
-        self.model_platform = model_platform
+        self._url = url or os.environ.get("COHERE_SERVER_URL")
 
         self._client = cohere.Client(api_key=self._api_key)
         self._token_counter: Optional[BaseTokenCounter] = None
@@ -143,26 +144,23 @@ class CohereModel(BaseModelBackend):
 
     @property
     def token_counter(self) -> BaseTokenCounter:
-        """Initialize the token counter for the model backend.
-
+        r"""Initialize the token counter for the model backend.
         Returns:
             BaseTokenCounter: The token counter following the model's
                 tokenization style.
         """
         if not self._token_counter:
             self._token_counter = OpenAITokenCounter(
-                model=ModelType.GPT_3_5_TURBO
+                model=ModelType.GPT_4O_MINI
             )
         return self._token_counter
 
     @api_keys_required("COHERE_API_KEY")
     def run(self, messages: List[OpenAIMessage]) -> ChatCompletion:
-        """Runs inference of Cohere chat completion.
-
+        r"""Runs inference of Cohere chat completion.
         Args:
             messages (List[OpenAIMessage]): Message list with the chat history
                 in OpenAI API format.
-
         Returns:
             ChatCompletion.
         """
@@ -170,26 +168,12 @@ class CohereModel(BaseModelBackend):
 
         cohere_messages = self._to_cohere_chatmessage(messages)
 
-        # Filter out unsupported parameters
-        supported_params = {
-            'temperature',
-            'p',
-            'k',
-            'max_tokens',
-            'prompt_truncation',
-        }
-        filtered_config = {
-            k: v
-            for k, v in self.model_config_dict.items()
-            if k in supported_params
-        }
-
         try:
             response = self._client.chat(
                 message=cohere_messages[-1]["message"],
                 chat_history=cohere_messages[:-1],  # type: ignore[arg-type]
                 model=self.model_type.value,
-                **filtered_config,
+                **self.model_config_dict,
             )
         except ApiError as e:
             logging.error(f"Cohere API Error: {e.status_code}")
@@ -218,22 +202,14 @@ class CohereModel(BaseModelBackend):
         return openai_response
 
     def check_model_config(self):
-        """Check whether the model configuration contains any
+        r"""Check whether the model configuration contains any
         unexpected arguments to Cohere API.
-
         Raises:
             ValueError: If the model configuration dictionary contains any
                 unexpected arguments to Cohere API.
         """
-        supported_params = {
-            'temperature',
-            'p',
-            'k',
-            'max_tokens',
-            'prompt_truncation',
-        }
         for param in self.model_config_dict:
-            if param not in supported_params:
+            if param not in COHERE_API_PARAMS:
                 raise ValueError(
                     f"Unexpected argument `{param}` is "
                     "input into Cohere model backend."

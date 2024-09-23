@@ -41,3 +41,11 @@ user_msg = BaseMessage.make_user_message(
 # Get response information
 response = camel_agent.step(user_msg)
 print(response.msgs[0].content)
+'''
+===============================================================================
+Hello CAMEL AI! It's great to connect with an open-source community focused on 
+autonomous and communicative agents. Your work is fascinating and has a wide 
+range of applications. I look forward to learning more about your research and
+contributions to the field of AI.
+===============================================================================
+'''
