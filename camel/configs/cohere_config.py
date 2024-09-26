@@ -45,6 +45,7 @@ class CohereConfig(BaseConfig):
     k: Optional[int] = None
     max_tokens: Optional[int] = None
     prompt_truncation: Optional[str] = None
+    seed: Optional[int] = None
 
     def as_dict(self):
         return {k: v for k, v in super().as_dict().items() if v is not None}

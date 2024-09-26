@@ -66,61 +66,57 @@ class CohereModel(BaseModelBackend):
         self, response: 'NonStreamedChatResponse'
     ) -> ChatCompletion:
         unique_id = str(uuid.uuid4())
+        usage = {
+            "prompt_tokens": response.meta.tokens.input_tokens or 0,  # type: ignore[union-attr]
+            "completion_tokens": response.meta.tokens.output_tokens or 0,  # type: ignore[union-attr]
+            "total_tokens": (response.meta.tokens.input_tokens or 0)  # type: ignore[union-attr]
+            + (response.meta.tokens.output_tokens or 0),  # type: ignore[union-attr]
+        }
 
-        # Safely access nested attributes
-        def safe_get(obj, *keys):
-            for key in keys:
-                if isinstance(obj, dict):
-                    obj = obj.get(key)
-                else:
-                    obj = getattr(obj, key, None)
-                if obj is None:
-                    return None
-            return obj
+        choices = [
+            dict(
+                index=0,
+                message={
+                    "role": "assistant",
+                    "content": response.text,
+                },
+                finish_reason=response.finish_reason,
+            )
+        ]
+
+        # Handle tool calls if present
+        if response.tool_calls:
+            tool_calls_list = []
+            for tool_call in response.tool_calls:
+                tool_calls_list.append(
+                    {
+                        "name": tool_call.name,
+                        "parameters": tool_call.parameters,
+                    }
+                )
+
+            # Insert the tool call information into the response
+            choices.append(
+                dict(
+                    index=1,
+                    message={
+                        "role": "assistant",
+                        "content": "Tool call in progress",
+                        "tool_calls": tool_calls_list,
+                    },
+                    finish_reason=None,  # Tool hasn't completed yet
+                )
+            )
 
         obj = ChatCompletion.construct(
             id=unique_id,
-            choices=[
-                dict(
-                    index=0,
-                    message={
-                        "role": "assistant",
-                        "content": response.text,
-                    },
-                    finish_reason=safe_get(response, 'finish_reason'),
-                )
-            ],
-            created=safe_get(response, 'meta', 'created_at'),
+            choices=choices,
+            created=None,
             model=self.model_type.value,
             object="chat.completion",
-            usage={
-                "prompt_tokens": safe_get(
-                    response, 'meta', 'billed_tokens', 'prompt_tokens'
-                )
-                or 0,
-                "completion_tokens": safe_get(
-                    response, 'meta', 'billed_tokens', 'completion_tokens'
-                )
-                or 0,
-                "total_tokens": (
-                    (
-                        safe_get(
-                            response, 'meta', 'billed_tokens', 'prompt_tokens'
-                        )
-                        or 0
-                    )
-                    + (
-                        safe_get(
-                            response,
-                            'meta',
-                            'billed_tokens',
-                            'completion_tokens',
-                        )
-                        or 0
-                    )
-                ),
-            },
+            usage=usage,
         )
+
         return obj
 
     def _to_cohere_chatmessage(
