@@ -29,6 +29,8 @@ class ModelType(Enum):
     GPT_4_TURBO = "gpt-4-turbo"
     GPT_4O = "gpt-4o"
     GPT_4O_MINI = "gpt-4o-mini"
+    O1_PREVIEW = "o1-preview"
+    O1_MINI = "o1-mini"
 
     GLM_4 = "glm-4"
     GLM_4_OPEN_SOURCE = "glm-4-open-source"
@@ -99,6 +101,10 @@ class ModelType(Enum):
         return "gpt-4o-mini"
 
     @property
+    def supports_tool_calling(self) -> bool:
+        return any([self.is_openai, self.is_gemini, self.is_mistral])
+
+    @property
     def is_openai(self) -> bool:
         r"""Returns whether this type of models is an OpenAI-released model."""
         return self in {
@@ -107,6 +113,8 @@ class ModelType(Enum):
             ModelType.GPT_4_TURBO,
             ModelType.GPT_4O,
             ModelType.GPT_4O_MINI,
+            ModelType.O1_PREVIEW,
+            ModelType.O1_MINI,
         }
 
     @property
@@ -286,6 +294,8 @@ class ModelType(Enum):
             ModelType.GPT_4O,
             ModelType.GPT_4O_MINI,
             ModelType.GPT_4_TURBO,
+            ModelType.O1_PREVIEW,
+            ModelType.O1_MINI,
             ModelType.MISTRAL_LARGE,
             ModelType.MISTRAL_NEMO,
             ModelType.QWEN_2,
