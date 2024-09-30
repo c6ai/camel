@@ -53,19 +53,16 @@ class CohereModel(BaseModelBackend):
     ):
         import cohere
 
+        api_key = api_key or os.environ.get("COHERE_API_KEY")
+        url = url or os.environ.get("COHERE_SERVER_URL")
         super().__init__(
-            model_type, model_config_dict, api_key, token_counter=token_counter
+            model_type, model_config_dict, api_key, url, token_counter
         )
-        self._api_key = api_key or os.environ.get("COHERE_API_KEY")
-        self._url = url or os.environ.get("COHERE_SERVER_URL")
-
         self._client = cohere.Client(api_key=self._api_key)
-        self._token_counter: Optional[BaseTokenCounter] = None
 
     def _to_openai_response(
         self, response: 'NonStreamedChatResponse'
     ) -> ChatCompletion:
-        unique_id = str(uuid.uuid4())
         usage = {
             "prompt_tokens": response.meta.tokens.input_tokens or 0,  # type: ignore[union-attr]
             "completion_tokens": response.meta.tokens.output_tokens or 0,  # type: ignore[union-attr]
@@ -73,43 +70,38 @@ class CohereModel(BaseModelBackend):
             + (response.meta.tokens.output_tokens or 0),  # type: ignore[union-attr]
         }
 
+        tool_calls = response.tool_calls
+
+        if tool_calls:
+            tool_call_id = uuid.uuid4().hex[:9]
+            openai_tool_calls = [
+                dict(
+                    id=str(tool_call.parameters) + tool_call_id,  # type: ignore[union-attr]
+                    function={
+                        "name": tool_call.name,  # type: ignore[union-attr]
+                        "arguments": tool_call.parameters,  # type: ignore[union-attr]
+                    },
+                    type="function",
+                )
+                for tool_call in tool_calls
+            ]
+
         choices = [
             dict(
-                index=0,
+                index=None,
                 message={
                     "role": "assistant",
                     "content": response.text,
+                    "tool_calls": openai_tool_calls,
                 },
-                finish_reason=response.finish_reason,
+                finish_reason=response.finish_reason
+                if response.finish_reason
+                else None,
             )
         ]
 
-        # Handle tool calls if present
-        if response.tool_calls:
-            tool_calls_list = []
-            for tool_call in response.tool_calls:
-                tool_calls_list.append(
-                    {
-                        "name": tool_call.name,
-                        "parameters": tool_call.parameters,
-                    }
-                )
-
-            # Insert the tool call information into the response
-            choices.append(
-                dict(
-                    index=1,
-                    message={
-                        "role": "assistant",
-                        "content": "Tool call in progress",
-                        "tool_calls": tool_calls_list,
-                    },
-                    finish_reason=None,  # Tool hasn't completed yet
-                )
-            )
-
         obj = ChatCompletion.construct(
-            id=unique_id,
+            id=response.generation_id,
             choices=choices,
             created=None,
             model=self.model_type.value,

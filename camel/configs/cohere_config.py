@@ -21,6 +21,7 @@ from camel.configs.base_config import BaseConfig
 class CohereConfig(BaseConfig):
     r"""Defines the parameters for generating chat completions using the
     Cohere API.
+
     Args:
         temperature (float, optional): Sampling temperature to use, between
             :obj:`0` and :obj:`2`. Higher values make the output more random,
@@ -30,9 +31,6 @@ class CohereConfig(BaseConfig):
             model can cite to generate a more accurate reply. Each document is
             either a string or document object with content and metadata.
             (default: :obj:`None`)
-        response_format (dict, optional): Configuration for forcing the model
-            output to adhere to the specified format. Supported on Command R,
-            Command R+ and newer models. (default: :obj:`None`)
         max_tokens (int, optional): The maximum number of tokens the model
             will generate as part of the response. (default: :obj:`None`)
         stop_sequences (List(str), optional): A list of up to 5 strings that
@@ -55,9 +53,9 @@ class CohereConfig(BaseConfig):
             to `frequency_penalty`, except that this penalty is applied
             equally to all tokens that have already appeared, regardless of
             their exact frequencies. (default: :obj:`0.0`)
-        k (float, optional): Ensures only the top k most likely tokens are
+        k (int, optional): Ensures only the top k most likely tokens are
             considered for generation at each step. Min value of `0`, max
-            value of `500`. (default: :obj:`0.0`)
+            value of `500`. (default: :obj:`0`)
         p (float, optional): Ensures that only the most likely tokens, with
             total probability mass of `p`, are considered for generation at
             each step. If both k and p are enabled, `p` acts after `k`. Min
@@ -66,13 +64,12 @@ class CohereConfig(BaseConfig):
 
     temperature: Optional[float] = 0.2
     documents: Optional[dict] = None
-    response_format: Optional[dict] = None
     max_tokens: Optional[int] = None
     stop_sequences: Optional[List[str]] = None
     seed: Optional[int] = None
     frequency_penalty: Optional[float] = 0.0
     presence_penalty: Optional[float] = 0.0
-    k: Optional[float] = 0.0
+    k: Optional[int] = 0
     p: Optional[float] = 0.75
 
 
